@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+
+<body>
+     <div class="settings">
+        <p>
+            <a href="index.html">Home</a> 
+            |
+            <a  href="calibrationpage.html">Calibration Settings</a>
+        </p>
+    </div>   
+
+    <h2>3-Point Calibration</h2>
+    <p>Expose the tip of the probe to 3 different temperatures:</p>
+
+    <div>
+        <button id="cal-c">°C</button>
+        <button id="cal-f">°F</button>
+    </div>
+
+    <div id="calibration-container">
+
+        <label>Temperature 1 (Ice Bath)</label>
+        <div>
+            <input id = "t1Input" type="number"> 
+            <button id = "cap-t1">Capture T1</button>
+            <span id = "t1-out"></span>
+        </div>
+
+        <label>Temperature 2 (Room Temperature)</label>
+        <div>
+            <input id = "t2Input" type="number"> 
+            <button id = "cap-t2">Capture T2</button>
+            <span id = "t2-out"></span>
+        </div>
+
+    <label>Temperature 3 (near Boiling Water)</label>
+        <div >
+            <input id ="t3Input" type="number"> 
+            <button id = "cap-t3">Capture T3</button>
+            <span id = "t3-out"></span>
+        </div>
+
+    <button id="calibrate">Calibrate</button>
+
+    <p id = "calibrationAlert" style = "font-weight: bold;"></p>
+
+    </div>
+
+</body>
+
+<script type = "module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+
+    const firebaseConfig = {
+
+        apiKey: "AIzaSyByNvR6tLrEyt0JEJYeut3PVLMPyywkulI",
+        databaseURL: "https://smart-meat-thermometer-d33ff-default-rtdb.firebaseio.com"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    let isCelsius = true;
+    let resistance = null;
+    let r1 = null, r2 = null, r3 = null;
+
+    const resRef = ref(db, '/SmartMeatThermometer/resistance');
+    onValue(resRef, (snapshot) => {
+
+        if (snapshot.val() !== null){
+            resistance = snapshot.val();
+        }
+    });
+
+    const btnC = document.getElementById("cal-c");
+    const btnF = document.getElementById("cal-f");
+    btnC.addEventListener("click", () => {isCelsius = true; btnC.style.fontWeight = "bold"; btnF.style.fontWeight = "normal";});
+    btnF.addEventListener("click", () => {isCelsius = false; btnC.style.fontWeight = "normal"; btnF.style.fontWeight = "bold";});
+
+    function handleCapture(outputId, pointNumber){
+
+        if (resistance === null){
+
+            document.getElementById("calibrationAlert").innerText = "Waiting for a connection...";
+            return null;
+        }
+
+        document.getElementById("calibrationAlert").innerText = "";
+        document.getElementById(outputId).innerText = `Temperature ${pointNumber} captured`;
+        return resistance;
+
+    }
+
+    document.getElementById("cap-t1").addEventListener("click", () => {r1 = handleCapture("t1-out", 1); });
+    document.getElementById("cap-t2").addEventListener("click", () => {r2 = handleCapture("t2-out", 2); });
+    document.getElementById("cap-t3").addEventListener("click", () => {r3 = handleCapture("t3-out", 3); });
+
+
+    const btnConfirm = document.getElementById("calibrate");
+    const alertMsg = document.getElementById("calibrationAlert");
+
+    btnConfirm.addEventListener("click", () => {
+        let t1 = parseFloat(document.getElementById("t1Input").value);
+        let t2 = parseFloat(document.getElementById("t2Input").value);
+        let t3 = parseFloat(document.getElementById("t3Input").value);
+    
+        if (isNaN(t1) || isNaN(t2) || isNaN(t3) || r1 === null || r2 === null || r3 === null) {
+
+            alertMsg.style.color = "red";
+            alertMsg.innerText = "Error: Please enter valid temperatures";
+            return;
+        }
+
+        if (!isCelsius) {
+
+            t1 = (t1 - 32) * 5/9;
+            t2 = (t2 - 32) * 5/9;
+            t3 = (t3 - 32) * 5/9;
+        }
+
+        const K1 = t1 + 273.15, K2 = t2 + 273.15, K3 = t3 + 273.15;
+        const L1 = Math.log(r1), L2 = Math.log(r2), L3 = Math.log(r3);
+        const Y1 = 1/K1, Y2 = 1/K2, Y3 = 1/K3;
+        
+        const gamma2 = (Y2 - Y1) / (L2 - L1);
+        const gamma3 = (Y3 - Y1) / (L3 - L1);
+        
+        const C = ((gamma3 - gamma2) / (L3 - L2)) / (L1 + L2 + L3);
+        const B = gamma2 - C * (Math.pow(L1, 2) + L1*L2 + Math.pow(L2, 2));
+        const A = Y1 - (B + Math.pow(L1, 2) * C) * L1;
+
+        const calRef = ref(db, 'SmartMeatThermometer/calibration');
+        set(calRef, { A: A, B: B, C: C }).then(() => {
+            alertMsg.style.color = "green";
+            alertMsg.innerText = "Calibration Successful! Data sent to ESP32.";
+        }).catch((error) => {
+            alertMsg.style.color = "red";
+            alertMsg.innerText = "Upload failed: " + error;
+        });
+    });
+
+
+
+</script>
+</html>

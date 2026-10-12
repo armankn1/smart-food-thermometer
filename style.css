@@ -1,0 +1,84 @@
+h1 {
+
+    color: orange;
+    font-size: 50px;
+    margin-top: -5px;
+
+}
+
+.settings {
+
+    display: flex;
+
+}
+
+a {
+
+    text-decoration: none;
+
+}
+
+a:hover {
+
+    text-decoration: underline;
+
+}
+
+.calibration-container {
+
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    margin-top: 20px;
+
+}
+
+#Status {
+
+    margin-top: -30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.bi-circle-fill {
+
+    color: orange;
+    font-size: 7px;
+    position: relative;
+    top: -0.5px;
+}
+
+#connection{
+
+    font-size: 12px;
+}
+
+body {
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    background-color: lightgoldenrodyellow;
+    text-align: center;
+    font-family: Arial;
+
+}
+
+#SetTempArea{
+
+    margin-top: 10px;
+
+}
+
+#CorF { 
+
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    padding-top: 20px;
+
+}
+

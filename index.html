@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="settings">
+    <p>
+        <a href="index.html">Home</a> 
+        |
+        <a  href="calibrationpage.html">Calibration Settings</a>
+    </p>
+</div>
+
+<div class="header-group">
+    <h1>Food Thermometer</h1>
+    <p id="Status">
+        <i id="status-circle" class="bi bi-circle-fill"></i>
+        <span id="connection">Connecting...</span>
+    </p>
+</div>
+
+<div class ="temperature-display">
+    <p><span id = "temperature-update"></span></p>
+
+</div>
+
+
+<div style = "margin-top: 10px; margin-bottom: 10px;">
+    <p id = "alert-message" style = "font-weight: bold"></p>
+</div>
+
+<div id = "SetTempArea">
+    <p>
+        Enter your desired temperature:<br>
+    
+        <input id ="SetTempInput" type="number"> 
+        <button id="SetTempOrReset">Set Temperature</button>
+    
+        <div>
+            <button id ="btn-C">°C</button>
+            <button id="btn-F">°F</button>
+        </div>
+    </p>
+
+</div>
+
+<script type="module">
+    import{ initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import{ getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+
+    const firebaseConfig = {
+
+        apiKey: "AIzaSyByNvR6tLrEyt0JEJYeut3PVLMPyywkulI",
+        databaseURL: "https://smart-meat-thermometer-d33ff-default-rtdb.firebaseio.com"
+
+    }
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    let isCelsius = true;
+    let rawTempC = null;
+    let targetTemp = null;
+    let alertFired = false;
+
+    const btnC = document.getElementById("btn-C");
+    const btnF = document.getElementById("btn-F");
+    const tempInput = document.getElementById("SetTempInput");
+    const tempBtn = document.getElementById("SetTempOrReset");
+    const alertMsg = document.getElementById("alert-message");
+    const tempDisplay = document.getElementById("temperature-update");
+
+    function updateScreen() {
+        if (rawTempC === null) return;
+
+        let displayTemp = rawTempC;
+        if (!isCelsius) {
+            displayTemp = (rawTempC * 9/5) + 32;
+        }
+
+        displayTemp = Math.round(displayTemp * 10) / 10;
+        tempDisplay.innerText = displayTemp + (isCelsius ? " °C" : " °F");
+
+        if (targetTemp !== null) {
+            if (displayTemp >= targetTemp && !alertFired) {
+                alertMsg.innerText = "Target Temperature Reached";
+                alertFired = true;
+
+            } else if (displayTemp < targetTemp){
+
+                alertMsg.innerText = "";
+                alertFired = false;
+            }
+
+        }
+    }
+
+    const tempRef = ref(db, '/SmartMeatThermometer/temperature');
+    onValue(tempRef, (snapshot) => {
+        if (snapshot.val() !== null){
+            rawTempC = snapshot.val();
+            updateScreen();
+        }
+    });
+
+    tempBtn.addEventListener("click", () => {
+        if (tempBtn.innerText === "Set Temperature"){
+            targetTemp = parseFloat(tempInput.value);
+            if (!isNaN(targetTemp)){
+                tempBtn.innerText = "Clear Target";
+                tempInput.disabled = true;
+                alertFired = false;
+                updateScreen();
+            }
+        } else {
+            targetTemp = null;
+            tempBtn.innerText = "Set Temperature";
+            tempInput.disabled = false;
+            tempInput.value = "";
+            alertMsg.innerText = "";
+            alertFired = false;
+        }
+    });
+
+    btnC.addEventListener("click", () => {
+        isCelsius = true;
+        btnC.style.fontWeight = "bold";
+        btnF.style.fontWeight = "normal";
+        updateScreen();
+    });
+
+    btnF.addEventListener("click", () => {
+        isCelsius = false;
+        btnF.style.fontWeight = "bold";
+        btnC.style.fontWeight = "normal";
+        updateScreen();
+    });
+
+
+    const statusIcon = document.getElementById("status-circle");
+    const statusText = document.getElementById("connection");
+
+    let lastPingTime = Date.now();
+    let lastPingValue = null;
+    let isFirstLoad = true;
+
+
+    const pingRef = ref(db, '/SmartMeatThermometer/lastPing');
+    onValue(pingRef, (snapshot) => {
+        const currentPing = snapshot.val();
+
+        if (isFirstLoad) {
+            lastPingValue = currentPing;
+            isFirstLoad = false;
+            return;
+        }
+
+        if (currentPing !== lastPingValue) {
+            lastPingValue = currentPing;
+            lastPingTime = Date.now();
+
+        
+        statusText.innerText = "Connected";
+        statusIcon.style.color = "green";
+        }
+    });
+
+    setInterval(() => {
+
+        if (Date.now() - lastPingTime >= 15000){
+
+            statusText.innerText = "Not Connected";
+            statusIcon.style.color = "red";
+        }
+
+    }, 2000);
+
+
+
+</script>
+
+</body>
+</html>

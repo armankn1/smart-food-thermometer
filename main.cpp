@@ -6,9 +6,10 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <WifiManager.h>
+#include <secrets.h>
 
-#define API_KEY "AIzaSyByNvR6tLrEyt0JEJYeut3PVLMPyywkulI"
-#define URL "smart-meat-thermometer-d33ff-default-rtdb.firebaseio.com"
+#define API_KEY FIREBASE_API_KEY
+#define URL FIREBASE_URL 
 
 FirebaseData fbdo;
 FirebaseAuth auth;
